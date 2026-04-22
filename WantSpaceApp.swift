@@ -1,0 +1,46 @@
+import SwiftUI
+import Firebase
+
+@main
+struct WantSpaceApp: App {
+    
+    init() {
+        FirebaseApp.configure()
+    }
+    
+    var body: some Scene {
+        WindowGroup {
+            MainTabView()
+        }
+    }
+}
+
+struct MainTabView: View {
+    @State private var selectedTab = 0
+
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            NavigationStack { HomeView() }
+                .tabItem {
+                    Label("Home", systemImage: "house.fill")
+                }
+                .tag(0)
+            ExploreView()
+                .tabItem {
+                    Label("Explore", systemImage: "map.fill")
+                }
+                .tag(1)
+            FavoritesView()
+                .tabItem {
+                    Label("Favorites", systemImage: "heart.fill")
+                }
+                .tag(2)
+            ProfileView()
+                .tabItem {
+                    Label("Profile", systemImage: "person.fill")
+                }
+                .tag(3)
+        }
+        .tint(AppTheme.burgundy)
+    }
+}
