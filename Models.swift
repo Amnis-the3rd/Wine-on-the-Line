@@ -33,9 +33,14 @@ struct WineBar: Identifiable {
     let nearestStation: String
     let coordinate: CLLocationCoordinate2D
     let tags: [String]
-
+    
     var priceLevelText: String {
-        String(repeating: "kr", count: priceLevel)
+        switch priceLevel {
+        case 1: return "Under 100kr"
+        case 2: return "100–200kr"
+        case 3: return "200kr+"
+        default: return ""
+        }
     }
 }
 

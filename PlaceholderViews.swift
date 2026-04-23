@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseFirestore
 
 // MARK: - Explore (Placeholder)
 
@@ -207,18 +208,22 @@ struct GoogleSignInButton: View {
 struct UserProfileView: View {
     @StateObject private var auth = AuthService.shared
     @State private var showEditProfile = false
+    @State private var visitedBars: [UserReview] = []
     
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
                 profileHeader
-                if let profile = auth.userProfile {
+                if auth.userProfile != nil {
                     myReviewsSection
                 } else {
                     setupProfileBanner
                 }
             }
             .padding()
+        }
+        .onAppear {
+            fetchMyReviews()
         }
         .sheet(isPresented: $showEditProfile) {
             EditProfileView()
@@ -231,6 +236,18 @@ struct UserProfileView: View {
                 .foregroundStyle(AppTheme.subtleText)
             }
         }
+    }
+    
+    private func fetchMyReviews() {
+        guard let username = auth.userProfile?.username else { return }
+        let db = Firestore.firestore()
+        db.collection("reviews")
+            .whereField("authorName", isEqualTo: username)
+            .order(by: "date", descending: true)
+            .addSnapshotListener { snapshot, _ in
+                guard let documents = snapshot?.documents else { return }
+                self.visitedBars = documents.compactMap { try? $0.data(as: UserReview.self) }
+            }
     }
     
     private var profileHeader: some View {
@@ -315,14 +332,49 @@ struct UserProfileView: View {
             Text("My Reviews")
                 .font(.title3.bold())
                 .foregroundStyle(AppTheme.burgundy)
-            Text("Coming soon — your reviewed bars will appear here!")
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.subtleText)
+            if visitedBars.isEmpty {
+                Text("You haven't reviewed any bars yet!")
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.subtleText)
+            } else {
+                ForEach(visitedBars, id: \.id) { review in
+                    HStack(spacing: 12) {
+                        Image(systemName: "wineglass.fill")
+                            .foregroundStyle(AppTheme.wine)
+                            .font(.title3)
+                            .frame(width: 40, height: 40)
+                            .background(AppTheme.champagne)
+                            .clipShape(Circle())
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(review.barName)
+                                .font(.headline)
+                            HStack(spacing: 2) {
+                                ForEach(0..<review.rating, id: \.self) { _ in
+                                    Image(systemName: "star.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(AppTheme.gold)
+                                }
+                            }
+                            Text(review.text)
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.subtleText)
+                                .lineLimit(2)
+                        }
+                        Spacer()
+                        Text(review.formattedDate)
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.subtleText)
+                    }
+                    .padding()
+                    .background(AppTheme.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
-
 // MARK: - Edit Profile View
 
 struct EditProfileView: View {

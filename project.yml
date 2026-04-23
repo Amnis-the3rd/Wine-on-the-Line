@@ -29,14 +29,6 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: '16.0'
-    settings:
-  base:
-    INFOPLIST_FILE: Info.plist
-  configs:
-    Debug:
-      OTHER_SWIFT_FLAGS: $(inherited)
-    Release:
-      OTHER_SWIFT_FLAGS: $(inherited)
     sources:
       - path: "."
     dependencies:
@@ -68,6 +60,7 @@ targets:
         UIApplicationSupportsIndirectInputEvents: true
         UILaunchStoryboardName: LaunchScreen
         NSLocationWhenInUseUsageDescription: "Wine on the Line uses your location to find wine bars near your closest metro station."
+        NSPhotoLibraryUsageDescription: "Wine on the Line needs access to your photo library to set your profile picture."
         UIRequiredDeviceCapabilities: [arm64]
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

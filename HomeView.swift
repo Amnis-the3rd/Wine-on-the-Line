@@ -1,9 +1,19 @@
 
-
 import SwiftUI
 import MapKit
 
+
 struct HomeView: View {
+    @State private var searchText = ""
+    @State private var isSearching = false
+    
+    var filteredBars: [WineBar] {
+        if searchText.isEmpty { return [] }
+        return SampleData.wineBars.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+    
     @StateObject private var locationManager = LocationManager()
     @State private var selectedBar: WineBar? = nil
     @State private var region = MKCoordinateRegion(
@@ -11,13 +21,37 @@ struct HomeView: View {
         span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)
     )
     
+    @ViewBuilder
+    private var searchResultsSection: some View {
+        if !filteredBars.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Results")
+                    .font(.headline)
+                    .padding(.leading)
+                ForEach(filteredBars) { bar in
+                    SearchResultRow(bar: bar, userLocation: locationManager.userLocation)
+                        .padding(.horizontal)
+                }
+            }
+            .padding(.bottom, 16)
+        } else if !searchText.isEmpty {
+            Text("No bars found")
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.subtleText)
+                .padding()
+        }
+    }
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 0) {
                 headerSection
-                mapSection
-                nearestStationBanner
-                nearbyBarsSection
+                if !searchText.isEmpty {
+                    searchResultsSection
+                } else {
+                    mapSection
+                    nearestStationBanner
+                    nearbyBarsSection
+                }
             }
         }
         .background(Color(.systemGroupedBackground))
@@ -28,7 +62,7 @@ struct HomeView: View {
     
     @ViewBuilder
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Wine on the Line")
@@ -43,6 +77,25 @@ struct HomeView: View {
                     .font(.title)
                     .foregroundStyle(AppTheme.wine)
             }
+            
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(AppTheme.subtleText)
+                TextField("Search wine bars...", text: $searchText)
+                    .onTapGesture { isSearching = true }
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                        isSearching = false
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(AppTheme.subtleText)
+                    }
+                }
+            }
+            .padding(10)
+            .background(AppTheme.secondaryBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .padding(.horizontal)
         .padding(.top, 8)
@@ -197,9 +250,9 @@ struct HomeView: View {
     struct WineBarAnnotation: View {
         var body: some View {
             Image(systemName: "wineglass.fill")
-                .font(.system(size: 10)) // Was caption (approx 12). 10 is much tinier
+                .font(.system(size: 8))
                 .foregroundStyle(.white)
-                .padding(5)
+                .padding(4)
                 .background(AppTheme.burgundy)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(.white, lineWidth: 1))

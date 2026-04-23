@@ -63,6 +63,7 @@ struct WineBarDetailSheet: View {
             Text(bar.subtitle)
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.subtleText)
+            
             HStack(spacing: 12) {
                 Label("\(bar.rating, specifier: "%.1f")", systemImage: "star.fill")
                     .foregroundStyle(AppTheme.gold)
@@ -70,10 +71,12 @@ struct WineBarDetailSheet: View {
                 Label(bar.nearestStation, systemImage: "tram.fill")
                     .foregroundStyle(AppTheme.subtleText)
                     .font(.subheadline)
-                Text(bar.priceLevelText)
-                    .foregroundStyle(AppTheme.subtleText)
-                    .font(.subheadline)
-            }
+                Image(systemName: "banknote")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.subtleText)
+                    Text(bar.priceLevelText)
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.subtleText)            }
         }
     }
 
