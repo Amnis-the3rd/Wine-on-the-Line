@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import MapKit
 
 struct WineBarDetailSheet: View {
     let bar: WineBar
@@ -36,6 +37,7 @@ struct WineBarDetailSheet: View {
             }
             .padding()
         }
+        
         .task {
             await loadDetails()
             reviewService.fetchReviews(for: bar.name)
@@ -43,6 +45,8 @@ struct WineBarDetailSheet: View {
         .sheet(isPresented: $showReviewForm) {
             WriteReviewView(bar: bar)
         }
+        
+        
     }
 
     // MARK: - Header
@@ -59,6 +63,21 @@ struct WineBarDetailSheet: View {
                         .font(.title2)
                         .foregroundStyle(AppTheme.subtleText)
                 }
+            }
+            
+            Button {
+                openInMaps()
+            } label: {
+                HStack {
+                    Image(systemName: "location.fill")
+                    Text("Get Directions")
+                }
+                .font(.subheadline.bold())
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(AppTheme.burgundy)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             Text(bar.subtitle)
                 .font(.subheadline)
@@ -164,6 +183,15 @@ struct WineBarDetailSheet: View {
     }
 
     // MARK: - Load Data
+    
+    private func openInMaps() {
+        let coordinate = bar.coordinate
+        let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+        mapItem.name = bar.name
+        mapItem.openInMaps(launchOptions: [
+            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving
+        ])
+    }
 
     private func loadDetails() async {
         do {
@@ -243,3 +271,4 @@ struct UserReviewRow: View {
         .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
     }
 }
+

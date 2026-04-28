@@ -4,6 +4,7 @@ import MapKit
 
 
 struct HomeView: View {
+    @State private var isMapExpanded = false
     @State private var searchText = ""
     @State private var isSearching = false
     
@@ -111,26 +112,44 @@ struct HomeView: View {
         let barItems = SampleData.wineBars.map { MapItem(from: $0) }
         let allItems = stationItems + barItems
 
-        Map(coordinateRegion: $region, annotationItems: allItems) { item in
-            MapAnnotation(coordinate: item.coordinate) {
-                if item.isWineBar {
-                    WineBarAnnotation()
-                        .onTapGesture {
-                            selectedBar = SampleData.wineBars.first { $0.name == item.name }
-                        }
-                } else {
-                    StationAnnotation(line: item.line ?? .green)
+        ZStack(alignment: .topTrailing) {
+            Map(coordinateRegion: $region, showsUserLocation: true, annotationItems: allItems) { item in
+                MapAnnotation(coordinate: item.coordinate) {
+                    if item.isWineBar {
+                        WineBarAnnotation()
+                            .onTapGesture {
+                                selectedBar = SampleData.wineBars.first { $0.name == item.name }
+                            }
+                    } else {
+                        StationAnnotation(line: item.line ?? .green)
+                    }
                 }
             }
-        }
-        .frame(height: 140)//tidigare 280
-        .clipShape(RoundedRectangle(cornerRadius: 20))//tidigare 20
-        .padding(.horizontal)
-        .sheet(item: $selectedBar) { bar in
-            WineBarDetailSheet(bar: bar)
+            .frame(height: isMapExpanded ? UIScreen.main.bounds.height * 0.75 : 200)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .padding(.horizontal)
+            .animation(.spring(), value: isMapExpanded)
+            .sheet(item: $selectedBar) { bar in
+                WineBarDetailSheet(bar: bar)
+            }
+
+            Button {
+                withAnimation(.spring()) {
+                    isMapExpanded.toggle()
+                }
+            } label: {
+                Image(systemName: isMapExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.white)
+                    .padding(8)
+                    .background(AppTheme.burgundy)
+                    .clipShape(Circle())
+                    .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
+            }
+            .padding(.top, 8)
+            .padding(.trailing, 24)
         }
     }
-    
     // MARK: - Nearest Station
     
     @ViewBuilder

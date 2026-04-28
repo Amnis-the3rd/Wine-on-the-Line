@@ -25,21 +25,24 @@ struct MainTabView: View {
                     Label("Home", systemImage: "house.fill")
                 }
                 .tag(0)
-            ExploreView()
-                .tabItem {
-                    Label("Explore", systemImage: "map.fill")
-                }
-                .tag(1)
+
             FavoritesView()
                 .tabItem {
                     Label("Favorites", systemImage: "heart.fill")
                 }
                 .tag(2)
+
+            FriendsView()
+                .tabItem {
+                    Label("Friends", systemImage: "person.2.fill")
+                }
+                .tag(3)
+
             ProfileView()
                 .tabItem {
                     Label("Profile", systemImage: "person.fill")
                 }
-                .tag(3)
+                .tag(4)
         }
         .tint(AppTheme.burgundy)
     }

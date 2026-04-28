@@ -71,4 +71,5 @@ struct UserProfile: Codable, Identifiable {
     var id: String = UUID().uuidString
     var username: String
     var profileImageURL: String?
+    var friends: [String] = []
 }
