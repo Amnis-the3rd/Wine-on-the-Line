@@ -38,11 +38,17 @@ struct MainTabView: View {
                 }
                 .tag(3)
 
+            SunTrackerTabView()
+                .tabItem {
+                    Label("Sun", systemImage: "sun.max.fill")
+                }
+                .tag(4)
+
             ProfileView()
                 .tabItem {
                     Label("Profile", systemImage: "person.fill")
                 }
-                .tag(4)
+                .tag(5)
         }
         .tint(AppTheme.burgundy)
     }

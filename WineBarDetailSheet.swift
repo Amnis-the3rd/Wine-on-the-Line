@@ -10,15 +10,22 @@ import MapKit
 
 struct WineBarDetailSheet: View {
     let bar: WineBar
+    @StateObject private var friendsService = FriendsService.shared
+    @StateObject private var reviewService = ReviewService()
+    @StateObject private var seatService = SeatAvailabilityService.shared
     @State private var placeDetails: PlaceDetails?
     @State private var isLoading = true
     @State private var showReviewForm = false
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var reviewService = ReviewService()
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 headerSection
+                seatAvailabilitySection
+                if bar.hasOutdoorSeating {
+                    SunTrackerView(bar: bar)
+                }
                 if isLoading {
                     ProgressView("Loading details...")
                         .frame(maxWidth: .infinity)
@@ -37,16 +44,15 @@ struct WineBarDetailSheet: View {
             }
             .padding()
         }
-        
         .task {
             await loadDetails()
             reviewService.fetchReviews(for: bar.name)
+            friendsService.fetchFriends()
+            seatService.fetchLatestReport(for: bar.name)
         }
         .sheet(isPresented: $showReviewForm) {
             WriteReviewView(bar: bar)
         }
-        
-        
     }
 
     // MARK: - Header
@@ -64,7 +70,7 @@ struct WineBarDetailSheet: View {
                         .foregroundStyle(AppTheme.subtleText)
                 }
             }
-            
+
             Button {
                 openInMaps()
             } label: {
@@ -79,10 +85,11 @@ struct WineBarDetailSheet: View {
                 .background(AppTheme.burgundy)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
+
             Text(bar.subtitle)
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.subtleText)
-            
+
             HStack(spacing: 12) {
                 Label("\(bar.rating, specifier: "%.1f")", systemImage: "star.fill")
                     .foregroundStyle(AppTheme.gold)
@@ -91,12 +98,85 @@ struct WineBarDetailSheet: View {
                     .foregroundStyle(AppTheme.subtleText)
                     .font(.subheadline)
                 Image(systemName: "banknote")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.subtleText)
-                    Text(bar.priceLevelText)
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.subtleText)            }
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.subtleText)
+                Text(bar.priceLevelText)
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.subtleText)
+            }
         }
+    }
+
+    // MARK: - Seat Availability
+
+    private var seatAvailabilitySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Seat Availability")
+                .font(.headline)
+                .foregroundStyle(AppTheme.burgundy)
+
+            if let report = seatService.latestReport {
+                HStack(spacing: 12) {
+                    Circle()
+                        .fill(report.hasSeats ? Color.green : Color.red)
+                        .frame(width: 12, height: 12)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(report.hasSeats ? "Seats available!" : "No seats available")
+                            .font(.subheadline.bold())
+                        Text("Reported by \(report.reporterName) · \(report.timeAgoText)")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.subtleText)
+                    }
+                    Spacer()
+                }
+            } else {
+                Text("No recent reports")
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.subtleText)
+            }
+
+            if AuthService.shared.currentUser != nil {
+                HStack(spacing: 12) {
+                    Button {
+                        seatService.reportSeats(for: bar.name, hasSeats: true)
+                    } label: {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("Seats available")
+                        }
+                        .font(.caption.bold())
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.green)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+
+                    Button {
+                        seatService.reportSeats(for: bar.name, hasSeats: false)
+                    } label: {
+                        HStack {
+                            Image(systemName: "xmark.circle.fill")
+                            Text("No seats")
+                        }
+                        .font(.caption.bold())
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.red)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+            } else {
+                Text("Sign in to report seat availability")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.subtleText)
+            }
+        }
+        .padding()
+        .background(AppTheme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
     }
 
     // MARK: - Opening Hours
@@ -169,21 +249,30 @@ struct WineBarDetailSheet: View {
                         .foregroundStyle(AppTheme.wine)
                 }
             }
-            if reviewService.reviews.isEmpty {
+
+            let friendUsernames = friendsService.friends.map { $0.username }
+            let friendReviews = reviewService.reviews.filter { friendUsernames.contains($0.authorName) }
+            let otherReviews = reviewService.reviews.filter { !friendUsernames.contains($0.authorName) }
+            let sortedReviews = friendReviews + otherReviews
+
+            if sortedReviews.isEmpty {
                 Text("No reviews yet — be the first!")
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.subtleText)
                     .padding()
             } else {
-                ForEach(reviewService.reviews) { review in
-                    UserReviewRow(review: review)
+                ForEach(sortedReviews) { review in
+                    UserReviewRow(
+                        review: review,
+                        isFriend: friendUsernames.contains(review.authorName)
+                    )
                 }
             }
         }
     }
 
     // MARK: - Load Data
-    
+
     private func openInMaps() {
         let coordinate = bar.coordinate
         let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
@@ -243,12 +332,22 @@ struct ReviewRow: View {
 
 struct UserReviewRow: View {
     let review: UserReview
+    var isFriend: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(review.authorName)
                     .font(.subheadline.bold())
+                if isFriend {
+                    Label("Friend", systemImage: "person.2.fill")
+                        .font(.caption2.bold())
+                        .foregroundStyle(AppTheme.wine)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(AppTheme.champagne)
+                        .clipShape(Capsule())
+                }
                 Spacer()
                 HStack(spacing: 2) {
                     ForEach(0..<review.rating, id: \.self) { _ in
@@ -266,9 +365,8 @@ struct UserReviewRow: View {
                 .foregroundStyle(AppTheme.subtleText.opacity(0.7))
         }
         .padding()
-        .background(AppTheme.champagne.opacity(0.5))
+        .background(isFriend ? AppTheme.champagne.opacity(0.5) : AppTheme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
     }
 }
-

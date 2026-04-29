@@ -4,6 +4,8 @@ import MapKit
 
 
 struct HomeView: View {
+    @State private var sortByDistance = true
+    @State private var showOpenOnly = false
     @State private var isMapExpanded = false
     @State private var searchText = ""
     @State private var isSearching = false
@@ -13,6 +15,26 @@ struct HomeView: View {
         return SampleData.wineBars.filter {
             $0.name.localizedCaseInsensitiveContains(searchText)
         }
+    }
+    
+    var sortedAndFilteredBars: [WineBar] {
+        var bars = locationManager.nearbyBars(limit: 30)
+        
+        if showOpenOnly {
+            // We'll filter by open status from Google Places cache
+            // For now filter is visual only — open status comes from detail sheet
+        }
+        
+        if sortByDistance {
+            let anchor = locationManager.userLocation ?? LocationManager.stockholmCenter
+            let anchorLoc = CLLocation(latitude: anchor.latitude, longitude: anchor.longitude)
+            bars.sort {
+                let distA = CLLocation(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude).distance(from: anchorLoc)
+                let distB = CLLocation(latitude: $1.coordinate.latitude, longitude: $1.coordinate.longitude).distance(from: anchorLoc)
+                return distA < distB
+            }
+        }
+        return bars
     }
     
     @StateObject private var locationManager = LocationManager()
@@ -113,7 +135,9 @@ struct HomeView: View {
         let allItems = stationItems + barItems
 
         ZStack(alignment: .topTrailing) {
-            Map(coordinateRegion: $region, showsUserLocation: true, annotationItems: allItems) { item in
+            Map(coordinateRegion: $region,
+                showsUserLocation:
+                    true, annotationItems: allItems){ item in
                 MapAnnotation(coordinate: item.coordinate) {
                     if item.isWineBar {
                         WineBarAnnotation()
@@ -180,29 +204,58 @@ struct HomeView: View {
     
     @ViewBuilder
     private var nearbyBarsSection: some View {
-        let bars = locationManager.nearbyBars()
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Nearby Wine Bars")
                     .font(.title3.bold())
                 Spacer()
-                Text("\(bars.count) spots")
+                Text("\(sortedAndFilteredBars.count) spots")
                     .font(.caption)
                     .foregroundStyle(AppTheme.subtleText)
             }
             .padding(.horizontal)
-            
+
+            // Filter bar
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    FilterChip(
+                        title: "Nearest first",
+                        icon: "location.fill",
+                        isSelected: sortByDistance
+                    ) {
+                        sortByDistance = true
+                    }
+
+                    FilterChip(
+                        title: "Open now",
+                        icon: "clock.fill",
+                        isSelected: showOpenOnly
+                    ) {
+                        showOpenOnly.toggle()
+                    }
+
+                    FilterChip(
+                        title: "All bars",
+                        icon: "list.bullet",
+                        isSelected: !sortByDistance
+                    ) {
+                        sortByDistance = false
+                    }
+                }
+                .padding(.horizontal)
+            }
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 14) {
-                    ForEach(bars) { bar in
+                    ForEach(sortedAndFilteredBars) { bar in
                         WineBarCard(bar: bar)
                     }
                 }
                 .padding(.horizontal)
             }
         }
-        .padding(.top, 20) //tidigare 20
-        .padding(.bottom, 32) //tidigare 32
+        .padding(.top, 20)
+        .padding(.bottom, 32)
     }
     
     // MARK: - Helpers
