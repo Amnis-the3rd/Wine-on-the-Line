@@ -28,7 +28,7 @@ class OSMBuildingService {
     func fetchNearbyBuildings(coordinate: CLLocationCoordinate2D) async -> [ShadowObstruction] {
         let lat = coordinate.latitude
         let lon = coordinate.longitude
-        let radius = 50 // meters
+        let radius = 120 // meters tidigare 50
         
         // Overpass API query for buildings within radius
         let query = """

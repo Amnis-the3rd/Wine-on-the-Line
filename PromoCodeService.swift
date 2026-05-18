@@ -16,10 +16,10 @@ enum UnlockDuration {
 }
 
 struct PromoCode: Identifiable, Codable {
-    var id: String
+    @DocumentID var id: String?
     let code: String
-    let duration: String // "15min", "day", "permanent"
-    var usedBy: [String] = []
+    let duration: String
+    var usedBy: [String]
     let maxUses: Int
     
     var isValid: Bool {
@@ -68,11 +68,13 @@ class PromoCodeService: ObservableObject {
         let upperCode = code.uppercased().trimmingCharacters(in: .whitespaces)
         
         do {
-            let snapshot = try await db.collection("promoCodes")
-                .whereField("code", isEqualTo: upperCode)
-                .getDocuments()
+            let snapshot = try await db.collection("promoCodes").getDocuments()
             
-            guard let doc = snapshot.documents.first,
+            let filtered = snapshot.documents.filter {
+                ($0.data()["code"] as? String) == upperCode
+            }
+            
+            guard let doc = filtered.first,
                   let promo = try? doc.data(as: PromoCode.self) else {
                 await MainActor.run {
                     errorMessage = "Invalid code. Please try again."
@@ -99,12 +101,10 @@ class PromoCodeService: ObservableObject {
                 return
             }
             
-            // Mark code as used
             try await db.collection("promoCodes").document(doc.documentID).updateData([
                 "usedBy": FieldValue.arrayUnion([uid])
             ])
             
-            // Apply unlock
             await MainActor.run {
                 applyUnlock(duration: promo.duration)
                 isLoading = false
@@ -117,8 +117,8 @@ class PromoCodeService: ObservableObject {
                 isLoading = false
             }
         }
-    }
     
+    }
     private func applyUnlock(duration: String) {
         let defaults = UserDefaults.standard
         defaults.set(true, forKey: unlockedKey)

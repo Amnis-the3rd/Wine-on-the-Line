@@ -4,16 +4,22 @@
 //
 //  Created by Amna on 2026-04-29.
 //
-
 import SwiftUI
+import MapKit
 
 struct SunTrackerTabView: View {
     @StateObject private var promoService = PromoCodeService.shared
-    
+    @StateObject private var weatherService = WeatherService.shared
+
     var body: some View {
         NavigationStack {
             if promoService.isUnlocked {
                 SunTrackerUnlockedView()
+                    .task {
+                        await weatherService.fetchWeather(
+                            for: LocationManager.stockholmCenter
+                        )
+                    }
             } else {
                 SunTrackerPaywallView()
             }
@@ -27,11 +33,10 @@ struct SunTrackerPaywallView: View {
     @StateObject private var promoService = PromoCodeService.shared
     @State private var promoCode = ""
     @State private var showPromoField = false
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 28) {
-                // Header
                 VStack(spacing: 12) {
                     Text("☀️")
                         .font(.system(size: 70))
@@ -45,13 +50,11 @@ struct SunTrackerPaywallView: View {
                         .padding(.horizontal, 20)
                 }
                 .padding(.top, 20)
-                
-                // Preview teaser
+
                 VStack(alignment: .leading, spacing: 12) {
                     Text("What you get:")
                         .font(.headline)
                         .foregroundStyle(AppTheme.burgundy)
-                    
                     FeatureRow(icon: "sun.max.fill", color: .orange, text: "Real-time sun position for every bar")
                     FeatureRow(icon: "clock.fill", color: AppTheme.wine, text: "How long sun will stay on outdoor seating")
                     FeatureRow(icon: "safari.fill", color: AppTheme.metroBlue, text: "Visual sun path diagram")
@@ -62,25 +65,13 @@ struct SunTrackerPaywallView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
                 .padding(.horizontal)
-                
-                // Pricing
+
                 VStack(spacing: 12) {
-                    PricingOption(
-                        title: "15 min pass",
-                        price: "12 kr",
-                        description: "Perfect for a quick check",
-                        icon: "timer"
-                    )
-                    PricingOption(
-                        title: "Day pass",
-                        price: "45 kr",
-                        description: "Full day access",
-                        icon: "sun.max"
-                    )
+                    PricingOption(title: "15 min pass", price: "12 kr", description: "Perfect for a quick check", icon: "timer")
+                    PricingOption(title: "Day pass", price: "45 kr", description: "Full day access", icon: "sun.max")
                 }
                 .padding(.horizontal)
-                
-                // Promo code
+
                 VStack(spacing: 12) {
                     Button {
                         withAnimation { showPromoField.toggle() }
@@ -89,7 +80,7 @@ struct SunTrackerPaywallView: View {
                             .font(.subheadline)
                             .foregroundStyle(AppTheme.wine)
                     }
-                    
+
                     if showPromoField {
                         VStack(spacing: 12) {
                             TextField("Enter promo code", text: $promoCode)
@@ -97,13 +88,13 @@ struct SunTrackerPaywallView: View {
                                 .padding()
                                 .background(AppTheme.secondaryBackground)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                            
+
                             if let error = promoService.errorMessage {
                                 Text(error)
                                     .font(.caption)
                                     .foregroundStyle(.red)
                             }
-                            
+
                             Button {
                                 Task {
                                     await promoService.redeemCode(promoCode)
@@ -131,7 +122,7 @@ struct SunTrackerPaywallView: View {
                         .transition(.opacity)
                     }
                 }
-                
+
                 Spacer()
             }
         }
@@ -144,84 +135,117 @@ struct SunTrackerPaywallView: View {
 
 struct SunTrackerUnlockedView: View {
     @StateObject private var promoService = PromoCodeService.shared
+    @StateObject private var weatherService = WeatherService.shared
+    @StateObject private var locationManager = LocationManager()
     @State private var selectedBar: WineBar? = nil
-    
-    var sunnyBars: [WineBar] {
-        SampleData.wineBars.filter { bar in
-            guard bar.hasOutdoorSeating,
-                  let direction = bar.outdoorFacingDirection else { return false }
-            return SolarCalculator.isInSun(coordinate: bar.coordinate, facingDirection: direction)
-        }
-    }
-    
-    var shadyBars: [WineBar] {
-        SampleData.wineBars.filter { bar in
-            guard bar.hasOutdoorSeating,
-                  let direction = bar.outdoorFacingDirection else { return false }
-            return !SolarCalculator.isInSun(coordinate: bar.coordinate, facingDirection: direction)
-        }
-    }
-    
+    @State private var region = MKCoordinateRegion(
+        center: LocationManager.stockholmCenter,
+        span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04)
+    )
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Access status
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text(promoService.formatExpiry())
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.subtleText)
-                }
-                .padding(.horizontal)
-                
-                // Sunny bars
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("☀️ In the sun now")
-                            .font(.title3.bold())
-                            .foregroundStyle(AppTheme.burgundy)
-                        Spacer()
-                        Text("\(sunnyBars.count) bars")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.subtleText)
-                    }
-                    .padding(.horizontal)
-                    
-                    if sunnyBars.isEmpty {
-                        Text("No bars with outdoor sun right now")
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.subtleText)
-                            .padding(.horizontal)
-                    } else {
-                        ForEach(sunnyBars) { bar in
-                            SunBarRow(bar: bar)
-                                .padding(.horizontal)
-                                .onTapGesture { selectedBar = bar }
+        VStack(spacing: 0) {
+            // Weather banner
+            weatherBanner
+            
+            // Map
+            Map(coordinateRegion: $region, showsUserLocation: true, annotationItems: sunAnnotationItems) { item in
+                MapAnnotation(coordinate: item.coordinate) {
+                    SunMapAnnotation(isInSun: item.isInSun, isCloudy: weatherService.currentWeather?.isCloudy == true)
+                        .onTapGesture {
+                            selectedBar = SampleData.wineBars.first { $0.name == item.name }
                         }
-                    }
-                }
-                
-                // Shady bars
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("🌥️ Currently in shade")
-                        .font(.title3.bold())
-                        .foregroundStyle(AppTheme.burgundy)
-                        .padding(.horizontal)
-                    
-                    ForEach(shadyBars) { bar in
-                        SunBarRow(bar: bar)
-                            .padding(.horizontal)
-                            .onTapGesture { selectedBar = bar }
-                    }
                 }
             }
-            .padding(.vertical)
+            .ignoresSafeArea(edges: .bottom)
         }
         .navigationTitle("Sun Tracker")
         .sheet(item: $selectedBar) { bar in
             WineBarDetailSheet(bar: bar)
         }
+        .task {
+            await weatherService.fetchWeather(for: LocationManager.stockholmCenter)
+            locationManager.requestPermission()
+        }
+    }
+
+    var sunAnnotationItems: [SunMapItem] {
+        SampleData.wineBars.compactMap { bar in
+            guard bar.hasOutdoorSeating else { return nil } //chatgpt*
+
+            let isInSun = bar.outdoorFacingDirection.contains { direction in
+                SolarCalculator.isInSun(
+                    coordinate: bar.coordinate,
+                    facingDirection: direction
+                )
+            } //*
+            return SunMapItem(
+                name: bar.name,
+                coordinate: bar.coordinate,
+                isInSun: isInSun
+            )
+        }
+    }
+
+    private var weatherBanner: some View {
+        HStack(spacing: 10) {
+            Text(weatherService.currentWeather?.isCloudy == true ? "🌥️" : "☀️")
+                .font(.title3)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(weatherService.currentWeather?.weatherDescription ?? "Loading weather...")
+                    .font(.subheadline.bold())
+                Text(weatherService.currentWeather?.isCloudy == true ?
+                     "Bars shown face the sun when clear" :
+                     "Showing bars currently in sun")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.subtleText)
+            }
+            Spacer()
+            Text(promoService.formatExpiry())
+                .font(.caption2)
+                .foregroundStyle(AppTheme.subtleText)
+        }
+        .padding()
+        .background(AppTheme.cardBackground)
+        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+    }
+}
+
+// MARK: - Sun Map Item
+
+struct SunMapItem: Identifiable {
+    let id = UUID()
+    let name: String
+    let coordinate: CLLocationCoordinate2D
+    let isInSun: Bool
+}
+
+// MARK: - Sun Map Annotation
+
+struct SunMapAnnotation: View {
+    let isInSun: Bool
+    let isCloudy: Bool
+
+    var icon: String {
+        if !isInSun { return "🌥️" }
+        if isCloudy { return "🌤️" }
+        return "☀️"
+    }
+
+    var bgColor: Color {
+        if !isInSun { return Color.gray.opacity(0.8) }
+        if isCloudy { return Color.orange.opacity(0.6) }
+        return Color.yellow.opacity(0.9)
+    }
+
+    var body: some View {
+        Text(icon)
+            .font(.system(size: 14))
+            .padding(6)
+            .background(bgColor)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(.white, lineWidth: 1.5))
+            .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
     }
 }
 
@@ -229,17 +253,28 @@ struct SunTrackerUnlockedView: View {
 
 struct SunBarRow: View {
     let bar: WineBar
-    
+
     var isInSun: Bool {
-        guard let direction = bar.outdoorFacingDirection else { return false }
-        return SolarCalculator.isInSun(coordinate: bar.coordinate, facingDirection: direction)
+        //chatgpt*
+        return bar.outdoorFacingDirection.contains { direction in
+            SolarCalculator.isInSun(
+                coordinate: bar.coordinate,
+                facingDirection: direction
+            )
+        } //*
     }
-    
-    var remainingTime: TimeInterval? {
-        guard let direction = bar.outdoorFacingDirection else { return nil }
-        return SolarCalculator.sunRemainingTime(coordinate: bar.coordinate, facingDirection: direction)
+
+    var remainingTime: TimeInterval? { //chatgpt*
+        return bar.outdoorFacingDirection
+            .compactMap { direction in
+                SolarCalculator.sunRemainingTime(
+                    coordinate: bar.coordinate,
+                    facingDirection: direction
+                )
+            }
+            .max()
     }
-    
+
     var body: some View {
         HStack(spacing: 14) {
             Text(isInSun ? "☀️" : "🌥️")
@@ -247,7 +282,7 @@ struct SunBarRow: View {
                 .frame(width: 44, height: 44)
                 .background(isInSun ? Color.yellow.opacity(0.2) : Color.gray.opacity(0.1))
                 .clipShape(Circle())
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(bar.name)
                     .font(.headline)
@@ -260,9 +295,9 @@ struct SunBarRow: View {
                         .foregroundStyle(.orange)
                 }
             }
-            
+
             Spacer()
-            
+
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(AppTheme.subtleText)
@@ -280,7 +315,7 @@ struct FeatureRow: View {
     let icon: String
     let color: Color
     let text: String
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
@@ -300,7 +335,7 @@ struct PricingOption: View {
     let price: String
     let description: String
     let icon: String
-    
+
     var body: some View {
         HStack {
             Image(systemName: icon)

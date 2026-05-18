@@ -13,35 +13,69 @@ struct SunTrackerView: View {
     @State private var currentTime = Date()
     @State private var osmObstructions: [ShadowObstruction] = []
     @State private var isLoadingOSM = true
+    @StateObject private var weatherService = WeatherService.shared
     let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var allObstructions: [ShadowObstruction] {
-        // Combine manual + OSM obstructions
-        // OSM takes priority but manual fills gaps
         osmObstructions.isEmpty ? bar.shadowObstructions : osmObstructions
-    }
-
-    var isInSun: Bool {
-        guard let direction = bar.outdoorFacingDirection else { return false }
-        return SolarCalculator.isInSun(
-            coordinate: bar.coordinate,
-            facingDirection: direction,
-            obstructions: allObstructions,
-            date: currentTime
-        )
-    }
-
-    var remainingTime: TimeInterval? {
-        guard let direction = bar.outdoorFacingDirection else { return nil }
-        return SolarCalculator.sunRemainingTime(
-            coordinate: bar.coordinate,
-            facingDirection: direction,
-            obstructions: allObstructions
-        )
     }
 
     var sunPosition: SolarPosition {
         SolarCalculator.sunPosition(at: bar.coordinate, date: currentTime)
+    }
+    
+    var facesTheSun: Bool { //chatgpt*
+            bar.outdoorFacingDirection.contains { direction in
+                SolarCalculator.isInSun(
+                    coordinate: bar.coordinate,
+                    facingDirection: direction,
+                    obstructions: allObstructions,
+                    date: currentTime
+                )
+            }
+        } //*
+    
+
+    var isActuallySunny: Bool {
+        guard let weather = weatherService.currentWeather else { return facesTheSun }
+        return facesTheSun && weather.isSunny
+    }
+
+    var remainingTime: TimeInterval? {
+        bar.outdoorFacingDirection
+            .compactMap { direction in
+                SolarCalculator.sunRemainingTime(
+                    coordinate: bar.coordinate,
+                    facingDirection: direction,
+                    obstructions: allObstructions
+                )
+            }
+            .max()
+    }
+
+    var sunStatusIcon: String {
+        guard sunPosition.isAboveHorizon else { return "🌙" }
+        if !facesTheSun { return "🌥️" }
+        if let weather = weatherService.currentWeather, weather.isCloudy { return "🌥️" }
+        return "☀️"
+    }
+
+    var sunStatusText: String {
+        guard sunPosition.isAboveHorizon else { return "Sun has set for today" }
+        guard facesTheSun else { return "In shade right now" }
+        
+        if let weather = weatherService.currentWeather {
+            if weather.isCloudy {
+                return "Cloudy today, but faces the sun"
+            }
+        }
+        return "Sunny right now!"
+    }
+    
+    var sunStatusColor: Color {
+        guard sunPosition.isAboveHorizon && facesTheSun else { return AppTheme.subtleText }
+        if let weather = weatherService.currentWeather, weather.isCloudy { return .gray }
+        return .orange
     }
 
     var body: some View {
@@ -53,16 +87,11 @@ struct SunTrackerView: View {
                 Spacer()
                 if isLoadingOSM {
                     HStack(spacing: 4) {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                        Text("Loading buildings...")
+                        ProgressView().scaleEffect(0.7)
+                        Text("Loading...")
                             .font(.caption2)
                             .foregroundStyle(AppTheme.subtleText)
                     }
-                } else {
-                    Text("Building data loaded")
-                        .font(.caption2)
-                        .foregroundStyle(AppTheme.metroGreen)
                 }
             }
 
@@ -70,7 +99,8 @@ struct SunTrackerView: View {
                 Text("No outdoor seating at this bar")
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.subtleText)
-            } else if bar.outdoorFacingDirection == nil {
+                //chat*
+            } else if bar.outdoorFacingDirection.isEmpty {//*
                 Text("Outdoor seating direction not yet added")
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.subtleText)
@@ -78,25 +108,24 @@ struct SunTrackerView: View {
                 HStack(spacing: 12) {
                     ZStack {
                         Circle()
-                            .fill(isInSun ? Color.yellow.opacity(0.2) : Color.gray.opacity(0.1))
+                            .fill(facesTheSun ? Color.yellow.opacity(0.2) : Color.gray.opacity(0.1))
                             .frame(width: 56, height: 56)
-                        Text(isInSun ? "☀️" : "🌥️")
+                        Text(sunStatusIcon)
                             .font(.title)
                     }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(isInSun ? "Sunny right now!" : "In shade right now")
+                        Text(sunStatusText)
                             .font(.headline)
-                            .foregroundStyle(isInSun ? .orange : AppTheme.subtleText)
-                        if let remaining = remainingTime {
+                            .foregroundStyle(sunStatusColor)
+                        
+                        if let weather = weatherService.currentWeather {
+                            Text(weather.weatherDescription)
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.subtleText)
+                        }
+                        
+                        if facesTheSun, let remaining = remainingTime {
                             Text(SolarCalculator.formatRemainingTime(remaining))
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.subtleText)
-                        } else if sunPosition.isAboveHorizon {
-                            Text("No sun on outdoor seating now")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.subtleText)
-                        } else {
-                            Text("Sun has set for today")
                                 .font(.caption)
                                 .foregroundStyle(AppTheme.subtleText)
                         }
@@ -112,9 +141,10 @@ struct SunTrackerView: View {
                 SunPathDiagram(
                     sunAzimuth: sunPosition.azimuth,
                     sunAltitude: sunPosition.altitude,
-                    facingDirection: bar.outdoorFacingDirection ?? 180,
+                    //chat*
+                    facingDirection: bar.outdoorFacingDirection.first ?? 180, //*
                     obstructions: allObstructions,
-                    isInSun: isInSun
+                    isInSun: isActuallySunny
                 )
             }
         }
@@ -123,9 +153,10 @@ struct SunTrackerView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
         .task {
-            osmObstructions = await OSMBuildingService.shared.fetchNearbyBuildings(
-                coordinate: bar.coordinate
-            )
+            async let buildings = OSMBuildingService.shared.fetchNearbyBuildings(coordinate: bar.coordinate)
+            async let weather: () = weatherService.fetchWeather(for: bar.coordinate)
+            osmObstructions = await buildings
+            await weather
             isLoadingOSM = false
         }
         .onReceive(timer) { time in
@@ -161,6 +192,7 @@ struct SunPathDiagram: View {
                     )
             }
 
+            // Direction labels
             ForEach(["N", "E", "S", "W"].indices, id: \.self) { i in
                 let angle = Double(i) * 90.0 - 90.0
                 let label = ["N", "E", "S", "W"][i]
@@ -173,12 +205,14 @@ struct SunPathDiagram: View {
                     )
             }
 
+            // Facing direction indicator
             Rectangle()
                 .fill(AppTheme.burgundy.opacity(0.4))
                 .frame(width: 4, height: 60)
                 .offset(y: -30)
                 .rotationEffect(Angle(degrees: facingDirection - 90))
 
+            // Sun position
             if sunAltitude > 0 {
                 Circle()
                     .fill(isInSun ? Color.yellow : Color.gray.opacity(0.5))
@@ -190,10 +224,12 @@ struct SunPathDiagram: View {
                     )
             }
 
+            // Center dot
             Circle()
                 .fill(AppTheme.burgundy)
                 .frame(width: 8, height: 8)
 
+            // Legend
             VStack {
                 Spacer()
                 HStack(spacing: 12) {
@@ -230,3 +266,4 @@ struct SunPathDiagram: View {
         .padding(.top, 8)
     }
 }
+
