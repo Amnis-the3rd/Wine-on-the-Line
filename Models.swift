@@ -70,27 +70,18 @@ enum SampleData {
         MetroStation(name: "Zinkensdamm", line: .red, coordinate: CLLocationCoordinate2D(latitude: 59.3175, longitude: 18.0500)),
         MetroStation(name: "Hornstull", line: .red, coordinate: CLLocationCoordinate2D(latitude: 59.3160, longitude: 18.0340)),
         MetroStation(name: "Kungsträdgården", line: .blue, coordinate: CLLocationCoordinate2D(latitude: 59.3310, longitude: 18.0720)),
-
         MetroStation(name: "Skanstull", line: .green, coordinate: CLLocationCoordinate2D(latitude: 59.3075, longitude: 18.0756)),
-
-        // Corrected
         MetroStation(name: "Tekniska högskolan", line: .red, coordinate: CLLocationCoordinate2D(latitude: 59.3457, longitude: 18.0719)),
-
         MetroStation(name: "Rådhuset", line: .blue, coordinate: CLLocationCoordinate2D(latitude: 59.3318, longitude: 18.0505)),
         MetroStation(name: "Fridhemsplan", line: .blue, coordinate: CLLocationCoordinate2D(latitude: 59.3318, longitude: 18.0390)),
         MetroStation(name: "S:t Eriksplan", line: .green, coordinate: CLLocationCoordinate2D(latitude: 59.3387, longitude: 18.0448)),
         MetroStation(name: "Thorildsplan", line: .blue, coordinate: CLLocationCoordinate2D(latitude: 59.3318, longitude: 18.0217)),
-
-        // Corrected
         MetroStation(name: "Kristineberg", line: .green, coordinate: CLLocationCoordinate2D(latitude: 59.3329, longitude: 18.0047)),
-
         MetroStation(name: "Stadshagen", line: .blue, coordinate: CLLocationCoordinate2D(latitude: 59.3340, longitude: 18.0290)),
         MetroStation(name: "Odenplan", line: .green, coordinate: CLLocationCoordinate2D(latitude: 59.3427, longitude: 18.0497)),
         MetroStation(name: "Karlaplan", line: .red, coordinate: CLLocationCoordinate2D(latitude: 59.3370, longitude: 18.0890)),
         MetroStation(name: "Gärdet", line: .red, coordinate: CLLocationCoordinate2D(latitude: 59.3370, longitude: 18.1020)),
         MetroStation(name: "Ropsten", line: .red, coordinate: CLLocationCoordinate2D(latitude: 59.3547, longitude: 18.1033)),
-
-        // Corrected
         MetroStation(name: "Stadion", line: .red, coordinate: CLLocationCoordinate2D(latitude: 59.3429, longitude: 18.0817)),
     ]
 
@@ -104,7 +95,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Skanstull",
             coordinate: CLLocationCoordinate2D(latitude: 59.3140, longitude: 18.0904),
-            tags: ["Natural", "Cozy"],
+            tags: ["Yet to review"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [180], // south
             shadowObstructions: [
@@ -120,7 +111,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Tekniska högskolan",
             coordinate: CLLocationCoordinate2D(latitude: 59.3449, longitude: 18.0616),
-            tags: ["Casual", "Local"],
+            tags: ["Yet to review"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [220], // southwest
             shadowObstructions: []
@@ -134,7 +125,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Östermalmstorg",
             coordinate: CLLocationCoordinate2D(latitude: 59.3371, longitude: 18.0758),
-            tags: ["Natural", "Curated"],
+            tags: ["Dark", "Curated"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [200],
             shadowObstructions: [
@@ -150,7 +141,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Gamla stan",
             coordinate: CLLocationCoordinate2D(latitude: 59.3231, longitude: 18.0712),
-            tags: ["Italian", "Classic"],
+            tags: ["Yet to review"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [150],
             shadowObstructions: [
@@ -166,7 +157,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Hornstull",
             coordinate: CLLocationCoordinate2D(latitude: 59.3162, longitude: 18.0348),
-            tags: ["Natural", "Rustic"],
+            tags: ["Yet to review"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [260], // west
             shadowObstructions: []
@@ -180,7 +171,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Medborgarplatsen",
             coordinate: CLLocationCoordinate2D(latitude: 59.3119, longitude: 18.0740),
-            tags: ["Views", "Premium"],
+            tags: ["Yet to review"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [360], // rooftop all directions
             shadowObstructions: [] // high up = no obstruction
@@ -194,7 +185,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Hötorget",
             coordinate: CLLocationCoordinate2D(latitude: 59.3363, longitude: 18.0614),
-            tags: ["Cozy", "Natural"],
+            tags: ["Intimate", "Chill"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [180],
             shadowObstructions: [
@@ -211,7 +202,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Kungsträdgården",
             coordinate: CLLocationCoordinate2D(latitude: 59.3316, longitude: 18.0751),
-            tags: ["Tasting", "Upscale"],
+            tags: ["Tasting", "Upscale","Yet to review"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [140],
             shadowObstructions: [
@@ -227,7 +218,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Medborgarplatsen",
             coordinate: CLLocationCoordinate2D(latitude: 59.3158, longitude: 18.0787),
-            tags: ["Cozy", "Hotel"],
+            tags: ["Spacious", "Hotel"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [170],
             shadowObstructions: []
@@ -241,7 +232,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Gamla stan",
             coordinate: CLLocationCoordinate2D(latitude: 59.3244, longitude: 18.0687),
-            tags: ["Portuguese", "Intimate"],
+            tags: ["Yet to review"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [160],
             shadowObstructions: [
@@ -257,7 +248,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "S:t Eriksplan",
             coordinate: CLLocationCoordinate2D(latitude: 59.3401, longitude: 18.0337),
-            tags: ["French/Italian", "Cozy"],
+            tags: ["Yet to review"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [160],
             shadowObstructions: [ShadowObstruction(direction: 160, angularHeight: 40)]
@@ -271,7 +262,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Rådmansgatan",
             coordinate: CLLocationCoordinate2D(latitude: 59.3406, longitude: 18.0633),
-            tags: ["Natural", "Tapas"],
+            tags: ["Natural", "Uncomfortable seats"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [210],
             shadowObstructions: [ShadowObstruction(direction: 210, angularHeight: 52)]
@@ -285,7 +276,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Östermalmstorg",
             coordinate: CLLocationCoordinate2D(latitude: 59.3351, longitude: 18.0774),
-            tags: ["Deli", "Casual"],
+            tags: ["Deli", "Casual", "Intimate"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [80],
             shadowObstructions: [ShadowObstruction(direction: 80, angularHeight: 52)]
@@ -299,7 +290,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Östermalmstorg",
             coordinate: CLLocationCoordinate2D(latitude: 59.3370, longitude: 18.0717),
-            tags: ["French", "Tacky"],
+            tags: ["Dark", "Tacky"],
             hasOutdoorSeating: true,
             outdoorFacingDirection: [230],
             shadowObstructions: []
@@ -327,7 +318,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Skanstull",
             coordinate: CLLocationCoordinate2D(latitude: 59.3116, longitude: 18.0821),
-            tags: ["Tapas", "Local"],
+            tags: ["Yet to review"],
             hasOutdoorSeating: false,
             outdoorFacingDirection: [0],
             shadowObstructions: []
@@ -341,7 +332,7 @@ enum SampleData {
             imageSystemName: "wineglass.fill",
             nearestStation: "Odenplan",
             coordinate: CLLocationCoordinate2D(latitude: 59.3480, longitude: 18.0461),
-            tags: ["Natural", "Kitchen"],
+            tags: ["Yet to review"],
             hasOutdoorSeating: false,
             outdoorFacingDirection: [0],
             shadowObstructions: []

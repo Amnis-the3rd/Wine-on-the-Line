@@ -136,8 +136,8 @@ struct HomeView: View {
 
         ZStack(alignment: .topTrailing) {
             Map(coordinateRegion: $region,
-                showsUserLocation:
-                    true, annotationItems: allItems){ item in
+                showsUserLocation: true,
+                annotationItems: allItems) { item in
                 MapAnnotation(coordinate: item.coordinate) {
                     if item.isWineBar {
                         WineBarAnnotation()
@@ -149,6 +149,7 @@ struct HomeView: View {
                     }
                 }
             }
+            .tint(.blue)
             .frame(height: isMapExpanded ? UIScreen.main.bounds.height * 0.75 : 200)
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .padding(.horizontal)
