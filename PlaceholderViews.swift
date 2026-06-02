@@ -207,15 +207,39 @@ struct GoogleSignInButton: View {
 
 struct UserProfileView: View {
     @StateObject private var auth = AuthService.shared
+    @ObservedObject private var favorites = FavoritesManager.shared
     @State private var showEditProfile = false
     @State private var visitedBars: [UserReview] = []
-    
+    @State private var selectedBar: WineBar? = nil
+    @State private var selectedTab = 0
+
+    var favoriteBars: [WineBar] {
+        favorites.favorites(from: SampleData.wineBars)
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
                 profileHeader
+
                 if auth.userProfile != nil {
-                    myReviewsSection
+                    // Tab switcher
+                    HStack(spacing: 0) {
+                        TabButton(title: "Reviews", count: visitedBars.count, isSelected: selectedTab == 0) {
+                            selectedTab = 0
+                        }
+                        TabButton(title: "Favorites", count: favoriteBars.count, isSelected: selectedTab == 1) {
+                            selectedTab = 1
+                        }
+                    }
+                    .background(AppTheme.secondaryBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    if selectedTab == 0 {
+                        myReviewsSection
+                    } else {
+                        myFavoritesSection
+                    }
                 } else {
                     setupProfileBanner
                 }
@@ -228,6 +252,9 @@ struct UserProfileView: View {
         .sheet(isPresented: $showEditProfile) {
             EditProfileView()
         }
+        .sheet(item: $selectedBar) { bar in
+            WineBarDetailSheet(bar: bar)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Sign Out") {
@@ -237,26 +264,13 @@ struct UserProfileView: View {
             }
         }
     }
-    
-    private func fetchMyReviews() {
-        guard let username = auth.userProfile?.username else { return }
-        let db = Firestore.firestore()
-        db.collection("reviews")
-            .whereField("authorName", isEqualTo: username)
-            .order(by: "date", descending: true)
-            .addSnapshotListener { snapshot, _ in
-                guard let documents = snapshot?.documents else { return }
-                self.visitedBars = documents.compactMap { try? $0.data(as: UserReview.self) }
-            }
-    }
-    
+
     private var profileHeader: some View {
         VStack(spacing: 12) {
             if let urlString = auth.userProfile?.profileImageURL,
                let url = URL(string: urlString) {
                 AsyncImage(url: url) { image in
-                    image.resizable()
-                        .scaledToFill()
+                    image.resizable().scaledToFill()
                 } placeholder: {
                     Circle().fill(AppTheme.champagne)
                 }
@@ -273,7 +287,7 @@ struct UserProfileView: View {
                             .foregroundStyle(AppTheme.wine)
                     )
             }
-            
+
             if let username = auth.userProfile?.username {
                 Text(username)
                     .font(.title3.bold())
@@ -283,7 +297,14 @@ struct UserProfileView: View {
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.subtleText)
             }
-            
+
+            // Stats row
+            HStack(spacing: 24) {
+                StatBadge(value: visitedBars.count, label: "Reviews")
+                StatBadge(value: favoriteBars.count, label: "Favorites")
+            }
+            .padding(.vertical, 4)
+
             Button {
                 showEditProfile = true
             } label: {
@@ -299,7 +320,65 @@ struct UserProfileView: View {
             }
         }
     }
-    
+
+    private var myReviewsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if visitedBars.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 40))
+                        .foregroundStyle(AppTheme.rosé.opacity(0.7))
+                    Text("No reviews yet")
+                        .font(.headline)
+                        .foregroundStyle(AppTheme.burgundy)
+                    Text("Tap a wine bar and write your first review!")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.subtleText)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+            } else {
+                ForEach(visitedBars, id: \.id) { review in
+                    ProfileReviewRow(review: review)
+                        .onTapGesture {
+                            selectedBar = SampleData.wineBars.first { $0.name == review.barName }
+                        }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var myFavoritesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if favoriteBars.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "heart.slash")
+                        .font(.system(size: 40))
+                        .foregroundStyle(AppTheme.rosé.opacity(0.7))
+                    Text("No favorites yet")
+                        .font(.headline)
+                        .foregroundStyle(AppTheme.burgundy)
+                    Text("Tap the ♡ on any wine bar to save it here!")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.subtleText)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+            } else {
+                ForEach(favoriteBars) { bar in
+                    FavoriteBarRow(bar: bar)
+                        .onTapGesture {
+                            selectedBar = bar
+                        }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var setupProfileBanner: some View {
         VStack(spacing: 12) {
             Text("Set up your profile")
@@ -326,53 +405,103 @@ struct UserProfileView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
     }
-    
-    private var myReviewsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("My Reviews")
-                .font(.title3.bold())
-                .foregroundStyle(AppTheme.burgundy)
-            if visitedBars.isEmpty {
-                Text("You haven't reviewed any bars yet!")
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.subtleText)
-            } else {
-                ForEach(visitedBars, id: \.id) { review in
-                    HStack(spacing: 12) {
-                        Image(systemName: "wineglass.fill")
-                            .foregroundStyle(AppTheme.wine)
-                            .font(.title3)
-                            .frame(width: 40, height: 40)
-                            .background(AppTheme.champagne)
-                            .clipShape(Circle())
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(review.barName)
-                                .font(.headline)
-                            HStack(spacing: 2) {
-                                ForEach(0..<review.rating, id: \.self) { _ in
-                                    Image(systemName: "star.fill")
-                                        .font(.caption2)
-                                        .foregroundStyle(AppTheme.gold)
-                                }
-                            }
-                            Text(review.text)
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.subtleText)
-                                .lineLimit(2)
-                        }
-                        Spacer()
-                        Text(review.formattedDate)
-                            .font(.caption2)
-                            .foregroundStyle(AppTheme.subtleText)
-                    }
-                    .padding()
-                    .background(AppTheme.cardBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
-                }
+
+    private func fetchMyReviews() {
+        guard let username = auth.userProfile?.username else { return }
+        let db = Firestore.firestore()
+        db.collection("reviews")
+            .whereField("authorName", isEqualTo: username)
+            .order(by: "date", descending: true)
+            .addSnapshotListener { snapshot, _ in
+                guard let documents = snapshot?.documents else { return }
+                self.visitedBars = documents.compactMap { try? $0.data(as: UserReview.self) }
             }
+    }
+}
+
+// MARK: - Tab Button
+
+struct TabButton: View {
+    let title: String
+    let count: Int
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.subheadline.bold())
+                Text("\(count)")
+                    .font(.caption)
+                    .foregroundStyle(isSelected ? AppTheme.wine : AppTheme.subtleText)
+            }
+            .foregroundStyle(isSelected ? AppTheme.burgundy : AppTheme.subtleText)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(isSelected ? AppTheme.cardBackground : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Stat Badge
+
+struct StatBadge: View {
+    let value: Int
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("\(value)")
+                .font(.title2.bold())
+                .foregroundStyle(AppTheme.burgundy)
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(AppTheme.subtleText)
+        }
+    }
+}
+
+// MARK: - Profile Review Row
+
+struct ProfileReviewRow: View {
+    let review: UserReview
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(AppTheme.champagne)
+                    .frame(width: 44, height: 44)
+                Image(systemName: "wineglass.fill")
+                    .foregroundStyle(AppTheme.wine)
+                    .font(.title3)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(review.barName)
+                    .font(.headline)
+                HStack(spacing: 2) {
+                    ForEach(0..<review.rating, id: \.self) { _ in
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.gold)
+                    }
+                }
+                Text(review.text)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.subtleText)
+                    .lineLimit(2)
+            }
+            Spacer()
+            Text(review.formattedDate)
+                .font(.caption2)
+                .foregroundStyle(AppTheme.subtleText)
+        }
+        .padding()
+        .background(AppTheme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
     }
 }
 // MARK: - Edit Profile View
